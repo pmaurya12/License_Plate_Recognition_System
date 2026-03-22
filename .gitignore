@@ -1,0 +1,17 @@
+# Ignore uploaded videos
+# uploads/
+*.mp4
+*.avi
+*.mov
+
+# Ignore Python virtual environment
+venv/
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

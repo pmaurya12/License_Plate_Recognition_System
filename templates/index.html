@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>License Plate Detection</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e40af, #3b82f6);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-top: 25px;
+            margin-bottom: 20px;
+            font-size: 2.2rem;
+        }
+
+        .top-bar {
+            width: 90%;
+            max-width: 1100px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .upload-box {
+            flex: 1;
+            max-width: 500px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed rgba(255,255,255,0.7);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .upload-box.dragover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        input {
+            display: none;
+        }
+
+        button {
+            height: 65px;
+            padding: 0 30px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(to right, #2563eb, #60a5fa);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .file-name {
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        /* VIDEO */
+        .video-container {
+            width: 95%;
+            max-width: 1300px;
+            display: flex;
+            margin: auto;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+
+        video {
+            width: 100%;
+            max-height: 75vh;
+            border-radius: 14px;
+            background: black;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+
+        .download {
+            margin-top: 15px;
+            margin-bottom: 40px; /* ✅ spacing added below */
+            font-size: 1rem;
+            color: #bfdbfe;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* LOADER */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 999;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-top: 6px solid #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-text {
+            margin-top: 15px;
+            font-size: 1.1rem;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🚗 License Plate Detection</h1>
+
+<div style="margin-bottom:10px;">
+    <button type="button" onclick="startLive()">🎥 Live Detection</button>
+</div>
+
+<form method="POST" enctype="multipart/form-data" onsubmit="showLoader()" style="width:100%; display:flex; flex-direction:column; align-items:center;">
+    
+    <div class="top-bar">
+
+        <label class="upload-box" id="dropZone">
+            📂 Drag & Drop or Click to Upload
+            <input type="file" name="video" id="fileInput" accept="video/*" required>
+        </label>
+
+        <button type="submit">Process</button>
+
+    </div>
+
+    <div class="file-name" id="fileName"></div>
+
+</form>
+
+<!-- VIDEO -->
+<div class="video-container">
+
+    {% if output_video %}
+    <video id="videoPlayer" controls>
+        <source src="{{ url_for('uploaded_file', filename=output_video) }}" type="video/mp4">
+    </video>
+
+    <a id="downloadLink" class="download"
+       href="{{ url_for('uploaded_file', filename=output_video) }}" download>
+        ⬇ Download Processed Video
+    </a>
+    {% endif %}
+
+    <!-- ✅ ALWAYS PRESENT -->
+    <img id="liveFeed"
+         style="display:none;
+                width:100%;
+                max-height:75vh;
+                object-fit:contain;
+                border-radius:14px;
+                background:black;">
+</div>
+
+<!-- LOADER -->
+<div class="loader-overlay" id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text">Processing video... please wait</div>
+</div>
+
+<script>
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const fileName = document.getElementById("fileName");
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        fileInput.files = e.dataTransfer.files;
+        dropZone.classList.remove("dragover");
+        updateFileName();
+    });
+
+    fileInput.addEventListener("change", updateFileName);
+
+    function updateFileName() {
+        const file = fileInput.files[0];
+        fileName.innerText = file ? "Selected: " + file.name : "";
+    }
+
+    // ✅ SHOW LOADER ON SUBMIT
+    function showLoader() {
+        document.getElementById("loader").style.display = "flex";
+    }
+    function startLive() {
+    const live = document.getElementById("liveFeed");
+    const video = document.getElementById("videoPlayer");
+    const download = document.getElementById("downloadLink");
+
+    // show loader immediately
+    document.getElementById("loader").style.display = "flex";
+
+    // hide processed video
+    if (video) video.style.display = "none";
+    if (download) download.style.display = "none";
+
+    // start stream
+    live.style.display = "block";
+    live.src = "/video_feed";
+
+    setTimeout(() => {
+    document.getElementById("loader").style.display = "none";
+}, 1500);
+}
+</script>
+
+</body>
+</html>
