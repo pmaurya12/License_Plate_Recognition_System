@@ -60,6 +60,8 @@ The system validates input before processing:
 💻 Flask – Web interface for uploading videos and live streaming
 
 ## Installation
+```
    python -m venv venv
    venv\Scripts\activate
    pip install -r requirements.txt
+```
